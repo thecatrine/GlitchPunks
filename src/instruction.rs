@@ -17,16 +17,20 @@ pub enum NiftInstruction {
     /// 5. `[]` The token program
     InitEscrow {
         amount: u64
-    }
+    },
+    MintNFT {},
 }
 
 impl NiftInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
-        let (tag, rest) = input.split_first().ok_or(InvalidInstruction);
+        let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
             0 => Self::InitEscrow {
                 amount: Self::unpack_amount(rest)?,
+            },
+            1 => Self::MintNFT {
+
             },
             _ => return Err(InvalidInstruction.into()),
         })

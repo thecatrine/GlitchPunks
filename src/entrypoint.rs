@@ -6,6 +6,8 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+use crate::processor::Processor;
+
 entrypoint!(process_instruction);
 fn process_instruction(
     program_id: &Pubkey,
@@ -18,8 +20,13 @@ fn process_instruction(
         accounts.len(),
         instruction_data
     );
-    Ok(())
+    Processor::process(program_id, accounts, instruction_data)
 }
+
+
+
+
+
 
 #[cfg(test)]
 mod test {

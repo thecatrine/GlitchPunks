@@ -417,11 +417,13 @@ dependencies = [
 name = "budget-punks"
 version = "0.1.0"
 dependencies = [
+ "arrayref",
  "assert_matches",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "solana-validator",
+ "spl-token",
  "thiserror",
 ]
 
