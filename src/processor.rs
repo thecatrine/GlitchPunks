@@ -6,7 +6,7 @@ use solana_program::{
     pubkey::Pubkey,
     program_pack::{Pack, IsInitialized},
     sysvar::{rent::Rent, Sysvar},
-    program::invoke
+    program::{invoke, invoke_signed},
 };
 
 use crate::{
@@ -16,6 +16,11 @@ use crate::{
 };
 
 pub struct Processor;
+
+use std::str::FromStr;
+
+
+const arweave_address: &str = "https://u25ca6rd2tvqvldxsnvbjfabm5qtve7iidmcmbeu2ukfunyg3xpq.arweave.net/progeiPU6wqsd5NqFJQBZ2E6k-hA2CYElNUUWjcG3d8/";
 
 impl Processor {
     pub fn process(
@@ -43,22 +48,101 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
+        let signer = next_account_info(account_info_iter)?; // signing transaction
+
+        let mint_authority_acct = next_account_info(account_info_iter)?;
+
         let source_info = next_account_info(account_info_iter)?;
         let dest_info = next_account_info(account_info_iter)?;
 
-        if *dest_info.key != *program_id {
+        let (mint_authority, mint_authority_bump_seed) = Pubkey::find_program_address(&[b"mint_authority"], program_id);
+        msg!("mint authority");
+        mint_authority.log();
+ 
+        let expected_key = Pubkey::from_str("7EEtiweAtCmqiEw6UefkEdiPNPSjV5ssgEgv7ynyPon6").unwrap();
+        expected_key.log();
+        
+        let dest_key = *dest_info.key;
+        dest_key.log();
+        if *dest_info.key != expected_key {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        **source_info.try_borrow_mut_lamports()? -= 5;
+        **source_info.try_borrow_mut_lamports()? -= 1000;
         // Deposit five lamports into the destination
-        **dest_info.try_borrow_mut_lamports()? += 5;
+        **dest_info.try_borrow_mut_lamports()? += 1000;
+
+        // RSI remember to actually error if you don't pay
 
         msg!("Sending lamports to contract");
 
         let token_program = next_account_info(account_info_iter)?;
-
+        let mint_acct = next_account_info(account_info_iter)?;
         msg!("Would call to create NFT if this were real.");
+
+        // RSI have this actually increment
+
+
+        let rent_acct = next_account_info(account_info_iter)?;
+
+
+        let create_mint_ix = spl_token::instruction::initialize_mint(
+            token_program.key,
+            mint_acct.key, // Mint location
+            &mint_authority, // We're the authority,
+            None,
+            0,
+        )?;
+        msg!("Calling token program to create mint");
+        invoke(
+            &create_mint_ix,
+            &[
+                mint_acct.clone(),
+                rent_acct.clone(),
+            ],
+        )?;
+        msg!("Created mint.");
+
+        let final_acct = next_account_info(account_info_iter)?;
+
+        let initialize_account_ix = spl_token::instruction::initialize_account(
+            token_program.key,
+            final_acct.key,
+            mint_acct.key,
+            signer.key, // It's owned by the person who initially started it.
+        )?;
+        msg!("Calling token program to initialize account");
+        invoke(
+            &initialize_account_ix,
+            &[
+                final_acct.clone(),
+                mint_acct.clone(),
+                signer.clone(),
+                rent_acct.clone(),
+            ],
+        );
+
+        msg!("Minting a single token");
+        let mint_nft_ix = spl_token::instruction::mint_to(
+            token_program.key,
+            mint_acct.key,
+            final_acct.key,
+            mint_authority_acct.key,
+            &[],
+            1,
+        )?;
+        invoke_signed(
+            &mint_nft_ix,
+            &[
+                mint_acct.clone(),
+                final_acct.clone(),
+                mint_authority_acct.clone(), // signing authority
+            ],
+            &[&[b"mint_authority", &[mint_authority_bump_seed]]],
+        );
+
+        msg!("Would then register metadata.");
+
 
         /*
         let rent = &Rent::from_account_info(
@@ -71,9 +155,7 @@ impl Processor {
 
         // Initialize a "mint" for a single NFT
         let token_program = next_account_info(account_info_iter)?;
-        let create_mint_ix = spl_token::instruction::initialize_mint(
-            token_program.key,
-        )
+        
         */
         Ok(())
     }
