@@ -23,7 +23,12 @@ pub struct Processor;
 use std::str::FromStr;
 
 
+// RSI vary this with number
 const arweave_address: &str = "https://at53kwzgkaslzxnuzzwudu3c462njhwt5pyqnlreixreqo3i2i4q.arweave.net/BPu1WyZQJLzdtM5tQdNi57TUntPr8QauJEXiSDto0jk/punk_1.json";
+
+const SOL_LAMPORTS: u64 = 1_000_000_000;
+
+const FEE_LAMPORTS: u64 = 1000;
 
 impl Processor {
     pub fn process(
@@ -56,24 +61,32 @@ impl Processor {
         let mint_authority_acct = next_account_info(account_info_iter)?;
 
         let source_info = next_account_info(account_info_iter)?;
+        
         let dest_info = next_account_info(account_info_iter)?;
+        let state = next_account_info(account_info_iter)?;
 
         let (mint_authority, mint_authority_bump_seed) = Pubkey::find_program_address(&[b"mint_authority"], program_id);
         msg!("mint authority");
         mint_authority.log();
  
         let expected_key = Pubkey::from_str("AuK2wzBzM5ZToXdoAigrKQHFVzZfavbzPo82NU2cawnj").unwrap();
-        expected_key.log();
+        let expected_dest_key = Pubkey::from_str("7keeykNopXVgtLK97nCbarhaetE2351gZ8q7nzBnffJr").unwrap();
         
         let dest_key = *dest_info.key;
         dest_key.log();
-        if *dest_info.key != expected_key {
-            //return Err(ProgramError::IncorrectProgramId);
+        if dest_key != expected_dest_key {
+            return Err(ProgramError::IncorrectProgramId);
         }
 
-        **source_info.try_borrow_mut_lamports()? -= 1000;
+        let state_key = *state.key;
+        state_key.log();
+        if state_key != expected_key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        **source_info.try_borrow_mut_lamports()? -= FEE_LAMPORTS;
         // Deposit five lamports into the destination
-        **dest_info.try_borrow_mut_lamports()? += 1000;
+        **dest_info.try_borrow_mut_lamports()? += FEE_LAMPORTS;
 
         // RSI remember to actually error if you don't pay
 
@@ -167,7 +180,7 @@ impl Processor {
         /// 
         /// DO DATA MUNGING
         ///////
-        let mut nifty_state: NiftyState = NiftyState::try_from_slice(&dest_info.data.borrow())?;
+        let mut nifty_state: NiftyState = NiftyState::try_from_slice(&state.data.borrow())?;
         if !nifty_state.is_initialized {
             // First we need to create the account
             nifty_state.is_initialized = true;
@@ -180,7 +193,7 @@ impl Processor {
         nifty_state.next_num += 1;
 
         // Save again
-        nifty_state.serialize(&mut &mut dest_info.data.borrow_mut()[..])?;
+        nifty_state.serialize(&mut &mut state.data.borrow_mut()[..])?;
 
 
         /// ////
