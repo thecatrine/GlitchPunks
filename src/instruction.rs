@@ -15,9 +15,9 @@ pub enum NiftInstruction {
     /// 3. `[writable]` The escrow account, it will hold all necessary info about the trade.
     /// 4. `[]` The rent sysvar
     /// 5. `[]` The token program
-    InitEscrow {
-        amount: u64
-    },
+    //InitEscrow {
+    //    amount: u64
+    //},
     MintNFT {},
 }
 
@@ -26,23 +26,14 @@ impl NiftInstruction {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
-            0 => Self::InitEscrow {
-                amount: Self::unpack_amount(rest)?,
-            },
+            //0 => Self::InitEscrow {
+            //    amount: Self::unpack_amount(rest)?,
+            //},
             1 => Self::MintNFT {
 
             },
             _ => return Err(InvalidInstruction.into()),
         })
-    }
-
-    fn unpack_amount(input: &[u8]) -> Result<u64, ProgramError> {
-        let amount = input
-            .get(..8)
-            .and_then(|slice| slice.try_into().ok())
-            .map(u64::from_le_bytes)
-            .ok_or(InvalidInstruction)?;
-        Ok(amount)
     }
 }
 
