@@ -7,6 +7,8 @@ pub enum NiftError {
     InvalidInstruction,
     #[error("Not Rent Exempt")]
     NotRentExempt,
+    #[error("Out of NFTs")]
+    OutOfNFTs,
 }
 
 impl From<NiftError> for ProgramError {

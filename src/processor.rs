@@ -23,12 +23,11 @@ pub struct Processor;
 use std::str::FromStr;
 
 
-// RSI vary this with number
-const arweave_address: &str = "https://at53kwzgkaslzxnuzzwudu3c462njhwt5pyqnlreixreqo3i2i4q.arweave.net/BPu1WyZQJLzdtM5tQdNi57TUntPr8QauJEXiSDto0jk/punk_1.json";
+const arweave_address: &str = "https://arweave.net/NWAx-hV64R1xRtCyCHcKi6NgMStTC4xtHhfp6XM93Bs";
 
 const SOL_LAMPORTS: u64 = 1_000_000_000;
-
-const FEE_LAMPORTS: u64 = 1000;
+const FEE_LAMPORTS: u64 = 30_000_000;
+const NFT_LIMIT: u64 = 50;
 
 impl Processor {
     pub fn process(
@@ -48,6 +47,14 @@ impl Processor {
                 Self::process_mint_nft(accounts, program_id)
             }
         }
+    }
+
+    fn arweave_address_for_num(n: u64) -> String {
+        format!(
+            "{}/punk_{}.json",
+            arweave_address,
+            n,
+        )
     }
 
     fn process_mint_nft(
@@ -84,20 +91,42 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        **source_info.try_borrow_mut_lamports()? -= FEE_LAMPORTS;
-        // Deposit five lamports into the destination
-        **dest_info.try_borrow_mut_lamports()? += FEE_LAMPORTS;
+        //
+        // 
+        // DO DATA MUNGING
+        //
+        let mut nifty_state: NiftyState = NiftyState::try_from_slice(&state.data.borrow())?;
+        if !nifty_state.is_initialized {
+            // First we need to create the account
+            nifty_state.is_initialized = true;
+            nifty_state.next_num = 1;
+        }
+        msg!("Deserialized ok");
 
-        // RSI remember to actually error if you don't pay
+        let punk_num = nifty_state.next_num;
+
+        if punk_num <= NFT_LIMIT {
+            nifty_state.next_num += 1;
+        } else {
+            return Err(NiftError::OutOfNFTs.into());
+        }
+
+        nifty_state.serialize(&mut &mut state.data.borrow_mut()[..])?;
+
+        /////////
+        //  CHARGE THE USER FOR THEIR NFT
+        ////////
+
+        // Will error if the user didn't actually pay
+        **source_info.try_borrow_mut_lamports()? -= FEE_LAMPORTS;
+        **dest_info.try_borrow_mut_lamports()? += FEE_LAMPORTS;
 
         msg!("Sending lamports to contract");
 
         let token_program = next_account_info(account_info_iter)?;
         let mint_acct = next_account_info(account_info_iter)?;
-        msg!("Would call to create NFT if this were real.");
 
-        // RSI have this actually increment
-
+        msg!("Minting new NFT.");
 
         let rent_acct = next_account_info(account_info_iter)?;
 
@@ -109,7 +138,6 @@ impl Processor {
             None,
             0,
         )?;
-        msg!("Calling token program to create mint");
         invoke(
             &create_mint_ix,
             &[
@@ -127,7 +155,6 @@ impl Processor {
             mint_acct.key,
             signer.key, // It's owned by the person who initially started it.
         )?;
-        msg!("Calling token program to initialize account");
         invoke(
             &initialize_account_ix,
             &[
@@ -137,8 +164,9 @@ impl Processor {
                 rent_acct.clone(),
             ],
         );
+        msg!("Calling token program to initialize account owned by user");
 
-        msg!("Minting a single token");
+        
         let mint_nft_ix = spl_token::instruction::mint_to(
             token_program.key,
             mint_acct.key,
@@ -156,6 +184,7 @@ impl Processor {
             ],
             &[&[b"mint_authority", &[mint_authority_bump_seed]]],
         );
+        msg!("Minted a single token");
 
         msg!("Now register metadata");
         let metadata_account = next_account_info(account_info_iter)?;
@@ -171,32 +200,10 @@ impl Processor {
         ];
         let (metadata_key, metadata_bump_seed) =
             Pubkey::find_program_address(metadata_seeds, metadata_account.key);
-        msg!("Expected metadata key");
-        msg!("{:?}", metadata_seeds);
-        metadata_key.log();
-        token_metadata_acct.key.log();
-
-        ///////
-        /// 
-        /// DO DATA MUNGING
-        ///////
-        let mut nifty_state: NiftyState = NiftyState::try_from_slice(&state.data.borrow())?;
-        if !nifty_state.is_initialized {
-            // First we need to create the account
-            nifty_state.is_initialized = true;
-            nifty_state.next_num = 0;
-        }
-        msg!("Deserialized ok");
-
-        let punk_num = nifty_state.next_num;
-
-        nifty_state.next_num += 1;
-
-        // Save again
-        nifty_state.serialize(&mut &mut state.data.borrow_mut()[..])?;
-
 
         /// ////
+
+        msg!("Minting Punk {}", punk_num);
         let save_metadata_ix = spl_token_metadata::instruction::create_metadata_accounts(
             *metadata_account.key,
             *token_metadata_acct.key,
@@ -204,15 +211,14 @@ impl Processor {
             *mint_authority_acct.key,
             *signer.key,
             *mint_authority_acct.key,
-            format!("Punk {}", punk_num).to_string(),
+            format!("Glitch Punk {}", punk_num).to_string(),
             "".to_string(),
-            arweave_address.to_string(),
+            Self::arweave_address_for_num(punk_num),
             None, // TODO creators
             500,
             true,
             false,
         );
-        msg!("Minting Punk {}", punk_num);
         invoke_signed(
             &save_metadata_ix,
             &[
