@@ -81,7 +81,12 @@ impl Processor {
         msg!("mint authority");
         mint_authority.log();
  
-        
+        // No trying to get us to transfer money out of our own accounts
+        match *source_info.key {
+            expected_key => return Err(ProgramError::IncorrectProgramId),
+            program_id => return Err(ProgramError::IncorrectProgramId),
+            _ => {},
+        }
         
         let dest_key = *dest_info.key;
         msg!("Dest account");
