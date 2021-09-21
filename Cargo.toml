@@ -8,6 +8,8 @@ publish = false
 solana-program = "1.7.11"
 spl-token = {version = "3.1.1", features = ["no-entrypoint"]}
 spl-token-metadata = {version = "0.0.1", features = ["no-entrypoint"]}
+spl-associated-token-account = {version = "1.0.3", features = ["no-entrypoint"]}
+
 thiserror = "1.0.24"
 arrayref = "0.3.6"
 borsh = "0.9.1"

@@ -23,11 +23,11 @@ pub struct Processor;
 use std::str::FromStr;
 
 
-const arweave_address: &str = "https://arweave.net/NWAx-hV64R1xRtCyCHcKi6NgMStTC4xtHhfp6XM93Bs";
+const arweave_address: &str = "https://arweave.net/m2OjD2warNh2MaL-kv0z4ebI5I7gTY_wu60f0TQGTao";
 
 const SOL_LAMPORTS: u64 = 1_000_000_000;
 const FEE_LAMPORTS: u64 = 30_000_000;
-const NFT_LIMIT: u64 = 50;
+const NFT_LIMIT: u64 = 1000;
 
 impl Processor {
     pub fn process(
@@ -61,6 +61,11 @@ impl Processor {
         accounts: &[AccountInfo],
         program_id: &Pubkey,
     ) -> ProgramResult {
+        // Pubkey for cashier account that holds num of tokens issued
+        let expected_key = Pubkey::from_str("BkHFN4TvyWgDx3UsaJJoUbnAi4uKAniBvvwQUPPe2UDo").unwrap();
+        // Pubkey for payment destination of fees
+        let expected_dest_key = Pubkey::from_str("7keeykNopXVgtLK97nCbarhaetE2351gZ8q7nzBnffJr").unwrap();
+
         let account_info_iter = &mut accounts.iter();
 
         let signer = next_account_info(account_info_iter)?; // signing transaction
@@ -76,17 +81,22 @@ impl Processor {
         msg!("mint authority");
         mint_authority.log();
  
-        let expected_key = Pubkey::from_str("AuK2wzBzM5ZToXdoAigrKQHFVzZfavbzPo82NU2cawnj").unwrap();
-        let expected_dest_key = Pubkey::from_str("7keeykNopXVgtLK97nCbarhaetE2351gZ8q7nzBnffJr").unwrap();
+        
         
         let dest_key = *dest_info.key;
+        msg!("Dest account");
         dest_key.log();
+        msg!("Expected");
+        expected_dest_key.log();
         if dest_key != expected_dest_key {
             return Err(ProgramError::IncorrectProgramId);
         }
 
         let state_key = *state.key;
+        msg!("State account");
         state_key.log();
+        msg!("Expected");
+        expected_key.log();
         if state_key != expected_key {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -121,6 +131,9 @@ impl Processor {
         **source_info.try_borrow_mut_lamports()? -= FEE_LAMPORTS;
         **dest_info.try_borrow_mut_lamports()? += FEE_LAMPORTS;
 
+        //.checked_sub(amount)
+        //.ok_or(TokenError::Overflow)?;
+
         msg!("Sending lamports to contract");
 
         let token_program = next_account_info(account_info_iter)?;
@@ -149,11 +162,13 @@ impl Processor {
 
         let final_acct = next_account_info(account_info_iter)?;
 
+        msg!("Creating token account");
+
         let initialize_account_ix = spl_token::instruction::initialize_account(
             token_program.key,
             final_acct.key,
             mint_acct.key,
-            signer.key, // It's owned by the person who initially started it.
+            signer.key,
         )?;
         invoke(
             &initialize_account_ix,
@@ -164,7 +179,6 @@ impl Processor {
                 rent_acct.clone(),
             ],
         );
-        msg!("Calling token program to initialize account owned by user");
 
         
         let mint_nft_ix = spl_token::instruction::mint_to(
@@ -214,8 +228,8 @@ impl Processor {
             format!("Glitch Punk {}", punk_num).to_string(),
             "".to_string(),
             Self::arweave_address_for_num(punk_num),
-            None, // TODO creators
-            500,
+            None,
+            0,
             true,
             false,
         );
