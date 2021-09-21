@@ -82,10 +82,13 @@ impl Processor {
         mint_authority.log();
  
         // No trying to get us to transfer money out of our own accounts
-        match *source_info.key {
-            expected_key => return Err(ProgramError::IncorrectProgramId),
-            program_id => return Err(ProgramError::IncorrectProgramId),
-            _ => {},
+        if *source_info.key == expected_key {
+            msg!("Tried to steal from cashier");
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *source_info.key == *program_id {
+            msg!("Tried to steal from program");
+            return Err(ProgramError::IncorrectProgramId);
         }
         
         let dest_key = *dest_info.key;
