@@ -38,9 +38,13 @@ impl Processor {
         let instruction = NiftInstruction::unpack(instruction_data)?;
 
         match instruction {
-            //NiftInstruction::InitEscrow { amount } => {
-            //    msg!("Instruction: InitEscrow");
-            //    Self::process_init_escrow(accounts, amount, program_id)
+            //NiftInstruction::ExampleInstructionWithArgument { nonce } => {
+            //    msg!("Instruction: ExampleInstructionWithArgument");
+            //    Self::process_example_instruction_with_argument(
+	    //        accounts,
+	    //        nonce,
+	    //        program_id,
+	    //    )
             //},
             MintNFT => {
                 msg!("Minting NFT");
