@@ -26,7 +26,7 @@ use std::str::FromStr;
 const arweave_address: &str = "https://arweave.net/m2OjD2warNh2MaL-kv0z4ebI5I7gTY_wu60f0TQGTao";
 
 const SOL_LAMPORTS: u64 = 1_000_000_000;
-const FEE_LAMPORTS: u64 = 30_000_000;
+const FEE_LAMPORTS: u64 = 100_000_000;
 const NFT_LIMIT: u64 = 1000;
 
 impl Processor {
