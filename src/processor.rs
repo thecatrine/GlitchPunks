@@ -261,19 +261,6 @@ impl Processor {
 
         msg!("Done");
 
-        /*
-        let rent = &Rent::from_account_info(
-            next_account_info(account_info_iter)? // 4
-        )?;
-
-        if !rent.is_exempt(escrow_account.lamports(), escrow_account.data_len()) {
-            return Err(NiftError::NotRentExempt.into());
-        }
-
-        // Initialize a "mint" for a single NFT
-        let token_program = next_account_info(account_info_iter)?;
-        
-        */
         Ok(())
     }
 }
