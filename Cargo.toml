@@ -3,6 +3,7 @@ name = "budget-punks"
 version = "0.1.0"
 edition = "2018"
 publish = false
+license = "MIT"
 
 [dependencies]
 solana-program = "1.7.11"
